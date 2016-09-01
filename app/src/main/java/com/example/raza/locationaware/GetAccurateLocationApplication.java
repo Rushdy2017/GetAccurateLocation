@@ -14,13 +14,12 @@ public class GetAccurateLocationApplication extends Application {
     public static String locationProvider;
     public static Location oldLocation;
     public static String locationTime;
-
     public static Context mContext;
 
+    // dev-raza
     @Override
     public void onCreate() {
         super.onCreate();
-
         initApplication();
     }
 
