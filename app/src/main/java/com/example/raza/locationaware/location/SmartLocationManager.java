@@ -131,13 +131,21 @@ public class SmartLocationManager implements
 
     @Override
     public void onConnected(Bundle connectionHint) {
-        Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        startLocationUpdates();
-        if (location == null) {
-            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-            getLocationUsingAndroidAPI();
-        } else {
-            setNewLocation(getBetterLocation(location, mLocationFetched), mLocationFetched);
+        try {
+            if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                askLocationPermission();
+                return;
+            }
+            Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+            startLocationUpdates();
+            if (location == null) {
+                LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+                getLocationUsingAndroidAPI();
+            } else {
+                setNewLocation(getBetterLocation(location, mLocationFetched), mLocationFetched);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -252,41 +260,60 @@ public class SmartLocationManager implements
     }
 
     protected void startLocationUpdates() {
+        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            askLocationPermission();
+            return;
+        }
         LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
     }
 
     public void startLocationFetching() {
-        mGoogleApiClient.connect();
-        if (mGoogleApiClient.isConnected()) {
-            startLocationUpdates();
+        try {
+            if (mGoogleApiClient != null) {
+                mGoogleApiClient.connect();
+                if (mGoogleApiClient.isConnected()) {
+                    startLocationUpdates();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     public void pauseLocationFetching() {
-        if (mGoogleApiClient.isConnected()) {
-            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
-            mGoogleApiClient.disconnect();
+        try {
+            if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
+                LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
+                mGoogleApiClient.disconnect();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
     }
 
     public void abortLocationFetching() {
-        mGoogleApiClient.disconnect();
+        try {
+            if (mGoogleApiClient != null)
+                mGoogleApiClient.disconnect();
 
-        // Remove the listener you previously added
-        if (locationManager != null && locationListener != null) {
-            if (Build.VERSION.SDK_INT >= 23 &&
-                    ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                    ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                return;
-            }
-            try {
-                locationManager.removeUpdates(locationListener);
-                locationManager = null;
-            } catch (Exception ex) {
-                Log.e(TAG, ex.getMessage());
+            // Remove the listener you previously added
+            if (locationManager != null && locationListener != null) {
+                if (Build.VERSION.SDK_INT >= 23 &&
+                        ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                        ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    return;
+                }
+                try {
+                    locationManager.removeUpdates(locationListener);
+                    locationManager = null;
+                } catch (Exception ex) {
+                    Log.e(TAG, ex.getMessage());
 
+                }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
