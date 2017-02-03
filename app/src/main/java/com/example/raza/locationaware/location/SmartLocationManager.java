@@ -2,6 +2,7 @@ package com.example.raza.locationaware.location;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -69,6 +70,11 @@ public class SmartLocationManager implements
     public static final int ALL_PROVIDERS = 0;
     public static final int GPS_PROVIDER = 2;
 
+    public static final int ONLY_GOOGLE_API = 0;
+    public static final int ONLY_ANDROID_API = 1;
+    public static final int ANY_API = 2;
+    public int mServiceProvider;
+
 //    private final double STANDARD_LOCATION_ACCURACY = 100.0;
 //    private final double STANDARD_LOCATION_SEED_LIMIT = 6.95;
 
@@ -80,23 +86,24 @@ public class SmartLocationManager implements
 
     private boolean isPermissionAllowed = false;
 
-    public SmartLocationManager(Context context, Activity activity, LocationManagerInterface locationInterface, int providerType, int locationPiority, long locationFetchInterval, long fastestLocationFetchInterval, int forceNetworkProviders) {
+    public SmartLocationManager(Context context, Activity activity, LocationManagerInterface locationInterface, int providerType, int locationPiority, long locationFetchInterval, long fastestLocationFetchInterval, int forceNetworkProviders, int serviceProvider) {
         mContext = context;
         mActivity = activity;
         mProviderType = providerType;
 
         mLocationPiority = locationPiority;
         mForceNetworkProviders = forceNetworkProviders;
-        mLocationFetchInterval = locationFetchInterval;
-        mFastestLocationFetchInterval = fastestLocationFetchInterval;
+        //mLocationFetchInterval = locationFetchInterval;
+        //mFastestLocationFetchInterval = fastestLocationFetchInterval;
 
         mLocationManagerInterface = locationInterface;
+        mServiceProvider = serviceProvider;
 
-        initSmartLocationManager();
+        initSmartLocationManager(mServiceProvider);
     }
 
 
-    public void initSmartLocationManager() {
+    public void initSmartLocationManager(int serviceProvider) {
 
         // 1) ask for permission for Android 6 above to avoid crash
         // 2) check if gps is available
@@ -105,18 +112,33 @@ public class SmartLocationManager implements
 //        askLocationPermission();                            // for android version 6 above
         checkNetworkProviderEnable();
 
-        if (isGooglePlayServicesAvailable())                // if googleplay services available
-            initLocationObjts();                            // init obj for google play service and start fetching location
-        else
-            getLocationUsingAndroidAPI();                   // otherwise get location using Android API
+        if(serviceProvider == ONLY_GOOGLE_API){
+            if (isGooglePlayServicesAvailable()) {
+                // if googleplay services available
+                Toast.makeText(mContext, "google play is used", Toast.LENGTH_LONG).show();
+                initLocationObjts();
+            }// init obj for google play service and start fetching location
+        }else if(serviceProvider == ONLY_ANDROID_API){
+            Toast.makeText(mContext, "Android API is used", Toast.LENGTH_LONG).show();
+            getLocationUsingAndroidAPI();                       // otherwise get location using Android API
+        }else if(serviceProvider == ANY_API){
+            if (isGooglePlayServicesAvailable()) {
+                // if googleplay services available
+                Toast.makeText(mContext, "google play is used", Toast.LENGTH_LONG).show();
+                initLocationObjts();
+            }else {
+                Toast.makeText(mContext, "Android API is used", Toast.LENGTH_LONG).show();
+                getLocationUsingAndroidAPI();
+            }
+        }
     }
 
     private void initLocationObjts() {
         // Create the LocationRequest object
         mLocationRequest = LocationRequest.create()
-                .setPriority(mLocationPiority)
-                .setInterval(mLocationFetchInterval)                    // 10 seconds, in milliseconds
-                .setFastestInterval(mFastestLocationFetchInterval);     // 1 second, in milliseconds
+                .setPriority(mLocationPiority);
+                /*.setInterval(mLocationFetchInterval)                    // 10 seconds, in milliseconds
+                .setFastestInterval(mFastestLocationFetchInterval);*/     // 1 second, in milliseconds
 
         if (mGoogleApiClient == null) {
             mGoogleApiClient = new GoogleApiClient.Builder(mActivity)
@@ -175,7 +197,7 @@ public class SmartLocationManager implements
             mLocationFetched = location;
             mLastLocationUpdateTime = DateFormat.getTimeInstance().format(new Date());
             locationProvider = location.getProvider();
-            mLocationManagerInterface.locationFetched(location, mLastLocationFetched, mLastLocationUpdateTime, location.getProvider());
+            mLocationManagerInterface.locationFetched(mLocationFetched, mLastLocationFetched, mLastLocationUpdateTime, location.getProvider());
         }
     }
 
@@ -401,12 +423,13 @@ public class SmartLocationManager implements
 
     public boolean isGooglePlayServicesAvailable() {
         int status = GooglePlayServicesUtil.isGooglePlayServicesAvailable(mContext);
-
-        if (status == ConnectionResult.SUCCESS) {
+        if(status == ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED){
+            Dialog dialog = GooglePlayServicesUtil.getErrorDialog(status, mActivity,0);
+            dialog.show();
+        }else if (status == ConnectionResult.SUCCESS) {
             return true;
-        } else {
-            return false;
         }
+            return false;
     }
 
     /**

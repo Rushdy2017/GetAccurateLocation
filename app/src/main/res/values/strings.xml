@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">GetAccurateLocation</string>
+    <string name="not_found">Location still not found</string>
 </resources>
