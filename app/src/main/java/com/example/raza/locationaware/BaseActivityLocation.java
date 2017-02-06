@@ -31,6 +31,7 @@ public class BaseActivityLocation extends AppCompatActivity implements LocationM
 
 
     public SmartLocationManager mLocationManager;
+    public LocationFetcherService mLocationFetcherService;
     private static final int REQUEST_FINE_LOCATION = 1;
     private Activity mCurrentActivity;
     private int count = 0;
@@ -45,6 +46,10 @@ public class BaseActivityLocation extends AppCompatActivity implements LocationM
         GetAccurateLocationApplication.locationTime = time;
     }
 
+    public void instatntiate(Activity mActivity){
+        mLocationManager = new SmartLocationManager(getApplicationContext(), mActivity, SmartLocationManager.USE_UPDATE_TIME_GPS, this, SmartLocationManager.ALL_PROVIDERS, LocationRequest.PRIORITY_HIGH_ACCURACY, 10 * 1000, 1 * 1000, SmartLocationManager.LOCATION_PROVIDER_RESTRICTION_NONE, SmartLocationManager.ANY_API); // init location manager
+    }
+
     public void initLocationFetching(Activity mActivity) {
         mCurrentActivity = mActivity;
         // ask permission for M
@@ -52,29 +57,44 @@ public class BaseActivityLocation extends AppCompatActivity implements LocationM
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             showLocationPermission();
         } else {
-            mLocationManager = new SmartLocationManager(getApplicationContext(), mActivity, this, SmartLocationManager.ALL_PROVIDERS, LocationRequest.PRIORITY_HIGH_ACCURACY, 10 * 1000, 1 * 1000, SmartLocationManager.LOCATION_PROVIDER_RESTRICTION_NONE, SmartLocationManager.ONLY_GOOGLE_API); // init location manager
+            instatntiate(mActivity);
         }
     }
 
     protected void onStart() {
         super.onStart();
-        if (mLocationManager != null) {
+        Intent serviceIntent = new Intent(this, LocationFetcherService.class);
+        //serviceIntent.setAction()
+        startService(serviceIntent);
+       /* if (mLocationManager != null) {
             mLocationManager.startLocationFetching();
             //mLocationManager.abortLocationFetching();
-        }
+        }*/
     }
 
     protected void onResume(){
         super.onResume();
-        int permissionCheck = ContextCompat.checkSelfPermission(mCurrentActivity, Manifest.permission.ACCESS_FINE_LOCATION);
-        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-            /*if (ActivityCompat.shouldShowRequestPermissionRationale(mCurrentActivity, Manifest.permission.ACCESS_FINE_LOCATION)) {
+        /*int permissionCheck = ContextCompat.checkSelfPermission(mCurrentActivity, Manifest.permission.ACCESS_FINE_LOCATION);
+        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+            *//*if (ActivityCompat.shouldShowRequestPermissionRationale(mCurrentActivity, Manifest.permission.ACCESS_FINE_LOCATION)) {
                 showExplanation("Permission Needed", "Rationale", Manifest.permission.READ_PHONE_STATE, REQUEST_FINE_LOCATION);
-            } else {*/
-            mLocationManager = new SmartLocationManager(getApplicationContext(), BaseActivityLocation.this, this, SmartLocationManager.ALL_PROVIDERS, LocationRequest.PRIORITY_HIGH_ACCURACY, 10 * 1000, 1 * 1000, SmartLocationManager.LOCATION_PROVIDER_RESTRICTION_NONE, SmartLocationManager.ONLY_GOOGLE_API);
+            } else {*//*
+            requestPermission(Manifest.permission.ACCESS_FINE_LOCATION, REQUEST_FINE_LOCATION);
             //}
-        }
+        }else{
+            mLocationManager = new SmartLocationManager(getApplicationContext(), BaseActivityLocation.this, this, SmartLocationManager.ALL_PROVIDERS, LocationRequest.PRIORITY_HIGH_ACCURACY, 10 * 1000, 1 * 1000, SmartLocationManager.LOCATION_PROVIDER_RESTRICTION_NONE, SmartLocationManager.ONLY_GOOGLE_API);
+        }*/
+        showLocationPermission();
         //mLocationManager = new SmartLocationManager(getApplicationContext(), BaseActivityLocation.this, this, SmartLocationManager.ALL_PROVIDERS, LocationRequest.PRIORITY_HIGH_ACCURACY, 10 * 1000, 1 * 1000, SmartLocationManager.LOCATION_PROVIDER_RESTRICTION_NONE, SmartLocationManager.ONLY_GOOGLE_API); // init location manager
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Intent serviceIntent = new Intent(this, LocationFetcherService.class);
+        stopService(serviceIntent);
+        LocationFetcherService.timerTask.cancel();
+        Toast.makeText(this, "Service Destroyed", Toast.LENGTH_LONG).show();
     }
 
     protected void onStop() {
@@ -86,8 +106,8 @@ public class BaseActivityLocation extends AppCompatActivity implements LocationM
     @Override
     protected void onPause() {
         super.onPause();
-        if (mLocationManager != null)
-            mLocationManager.pauseLocationFetching();
+       /* if (mLocationManager != null)
+            mLocationManager.pauseLocationFetching();*/
     }
 
 
@@ -101,8 +121,8 @@ public class BaseActivityLocation extends AppCompatActivity implements LocationM
             //}
         } else {
             //Toast.makeText(mCurrentActivity, "Permission (already) Granted!", Toast.LENGTH_SHORT).show();
-            mLocationManager = new SmartLocationManager(getApplicationContext(), BaseActivityLocation.this, this, SmartLocationManager.ALL_PROVIDERS, LocationRequest.PRIORITY_HIGH_ACCURACY, 10 * 1000, 1 * 1000, SmartLocationManager.LOCATION_PROVIDER_RESTRICTION_NONE, SmartLocationManager.ONLY_GOOGLE_API); // init location manager
-            mLocationManager.startLocationFetching();
+            instatntiate(mCurrentActivity);
+            //mLocationManager.startLocationFetching();
         }
     }
 
@@ -127,7 +147,7 @@ public class BaseActivityLocation extends AppCompatActivity implements LocationM
         switch (requestCode) {
             case REQUEST_FINE_LOCATION:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    mLocationManager = new SmartLocationManager(getApplicationContext(), BaseActivityLocation.this, this, SmartLocationManager.ALL_PROVIDERS, LocationRequest.PRIORITY_HIGH_ACCURACY, 10 * 1000, 1 * 1000, SmartLocationManager.LOCATION_PROVIDER_RESTRICTION_NONE, SmartLocationManager.ONLY_GOOGLE_API); // init location manager
+                    instatntiate(BaseActivityLocation.this);
                     mLocationManager.startLocationFetching();
                     Toast.makeText(BaseActivityLocation.this, "Permission Granted!", Toast.LENGTH_SHORT).show();
 
