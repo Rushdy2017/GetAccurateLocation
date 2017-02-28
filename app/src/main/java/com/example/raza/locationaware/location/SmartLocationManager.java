@@ -66,6 +66,7 @@ public class SmartLocationManager implements
     boolean isNetworkEnabled;
 
     private int mProviderType;
+
     public static final int NETWORK_PROVIDER = 1;
     public static final int ALL_PROVIDERS = 0;
     public static final int GPS_PROVIDER = 2;
@@ -73,6 +74,7 @@ public class SmartLocationManager implements
     public static final int ONLY_GOOGLE_API = 0;
     public static final int ONLY_ANDROID_API = 1;
     public static final int ANY_API = 2;
+
     public int mServiceProvider;
 
     public static final int USE_ONE_TIME_GPS = 0;
@@ -104,6 +106,22 @@ public class SmartLocationManager implements
         initSmartLocationManager(mServiceProvider, mGpsOption);
     }
 
+    public SmartLocationManager(Context context, int gpsOption, LocationManagerInterface locationInterface, int providerType, int locationPiority, long locationFetchInterval, long fastestLocationFetchInterval, int forceNetworkProviders, int serviceProvider) {
+        mContext = context;
+        mProviderType = providerType;
+
+        mLocationPiority = locationPiority;
+        mForceNetworkProviders = forceNetworkProviders;
+        mLocationFetchInterval = locationFetchInterval;
+        mFastestLocationFetchInterval = fastestLocationFetchInterval;
+
+        mLocationManagerInterface = locationInterface;
+        mServiceProvider = serviceProvider;
+        mGpsOption = gpsOption;
+
+        initSmartLocationManager(mServiceProvider, mGpsOption);
+    }
+
 
     public void initSmartLocationManager(int serviceProvider, int gpsOption) {
 
@@ -111,44 +129,43 @@ public class SmartLocationManager implements
         // 2) check if gps is available
         // 3) get location using awesome strategy
 
-//        askLocationPermission();                            // for android version 6 above
         checkNetworkProviderEnable();
 
-        if(serviceProvider == ONLY_GOOGLE_API){
-            if(gpsOption == USE_ONE_TIME_GPS){
+        if (serviceProvider == ONLY_GOOGLE_API) {
+            if (gpsOption == USE_ONE_TIME_GPS) {
                 if (isGooglePlayServicesAvailable()) {
                     // if googleplay services available
                     Toast.makeText(mContext, "google play is used", Toast.LENGTH_SHORT).show();
                     createGoogleApiwithOneTimeGps();
                 }// createGoogleApi for google play service and start fetching location
-            }else{
+            } else {
                 if (isGooglePlayServicesAvailable()) {
                     // if googleplay services available
                     Toast.makeText(mContext, "google play is used", Toast.LENGTH_SHORT).show();
                     createGoogleApiEveryTimeGps();
                 }// createGoogleApi for google play service and start fetching location
             }
-        }else if(serviceProvider == ONLY_ANDROID_API){
+        } else if (serviceProvider == ONLY_ANDROID_API) {
             Toast.makeText(mContext, "Android API is used", Toast.LENGTH_SHORT).show();
-            if(gpsOption == USE_ONE_TIME_GPS){
+            if (gpsOption == USE_ONE_TIME_GPS) {
                 getLocationUsingAndroidAPIOneTimeGps();
-            } else{
+            } else {
                 getLocationUsingAndroidAPI();
             }                      // otherwise get location using Android API
-        }else if(serviceProvider == ANY_API){
+        } else if (serviceProvider == ANY_API) {
             if (isGooglePlayServicesAvailable()) {
                 Toast.makeText(mContext, "google play is used", Toast.LENGTH_SHORT).show();
-                if(gpsOption == USE_ONE_TIME_GPS){
+                if (gpsOption == USE_ONE_TIME_GPS) {
                     createGoogleApiwithOneTimeGps();
-                }else{
+                } else {
                     createGoogleApiEveryTimeGps();
                 }
                 // if googleplay services available
-            }else {
+            } else {
                 Toast.makeText(mContext, "Android API is used", Toast.LENGTH_SHORT).show();
-                if(gpsOption == USE_ONE_TIME_GPS){
+                if (gpsOption == USE_ONE_TIME_GPS) {
                     getLocationUsingAndroidAPIOneTimeGps();
-                }else{
+                } else {
                     getLocationUsingAndroidAPI();
                 }
             }
@@ -242,14 +259,15 @@ public class SmartLocationManager implements
     }
 
     public static boolean flag = false;
+
     private void getLocationUsingAndroidAPIOneTimeGps() {
         // Acquire a reference to the system Location Manager
         locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
 
-        if(!flag){
+        if (!flag) {
             setLocationListner();
             captureLocation();
-        }else{
+        } else {
             if (locationManager != null && locationListener != null) {
                 if (Build.VERSION.SDK_INT >= 23 &&
                         ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
@@ -353,47 +371,55 @@ public class SmartLocationManager implements
     }
 
     public void pauseLocationFetching() {
-        if (mGoogleApiClient.isConnected()) {
-            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
-            mGoogleApiClient.disconnect();
+        try {
+            if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
+                LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
+                mGoogleApiClient.disconnect();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
     }
 
     public void abortLocationFetching() {
-       if(mGoogleApiClient.isConnected()){
-           mGoogleApiClient.disconnect();
-       }
-        // Remove the listener you previously added
-        if (locationManager != null && locationListener != null) {
-            if (Build.VERSION.SDK_INT >= 23 &&
-                    ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                    ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                return;
+        try {
+            if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
+                mGoogleApiClient.disconnect();
             }
-            try {
-                locationManager.removeUpdates(locationListener);
-                locationManager = null;
-            } catch (Exception ex) {
-                Log.e(TAG, ex.getMessage());
+            // Remove the listener you previously added
+            if (locationManager != null && locationListener != null) {
+                if (Build.VERSION.SDK_INT >= 23 &&
+                        ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                        ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    return;
+                }
+                try {
+                    locationManager.removeUpdates(locationListener);
+                    locationManager = null;
+                } catch (Exception ex) {
+                    Log.e(TAG, ex.getMessage());
 
+                }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     public void resetLocation() {
-        mLocationFetched = null;
-        mLastLocationFetched = null;
-        networkLocation = null;
-        gpsLocation = null;
+        try {
+            mLocationFetched = null;
+            mLastLocationFetched = null;
+            networkLocation = null;
+            gpsLocation = null;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     //  Android M Permission check
     public boolean askLocationPermission() {
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-
-
             if (ContextCompat.checkSelfPermission(mActivity, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
                     || ContextCompat.checkSelfPermission(mActivity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                     ) {
@@ -421,30 +447,32 @@ public class SmartLocationManager implements
                     ActivityCompat.requestPermissions(mActivity, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION
                             , Manifest.permission.ACCESS_FINE_LOCATION
                     }, PERMISSION_REQUEST_CODE);
-
             }
         }
         return isPermissionAllowed;
     }
 
     public void checkNetworkProviderEnable() {
-        locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
+        try {
+            locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
 
-        isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+            isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+            isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
 
-        // getting network status
-        if (!isGPSEnabled && !isNetworkEnabled && mForceNetworkProviders == LOCATION_PROVIDER_ALL_RESTICTION) {
-            Toast.makeText(mContext, "Location can't be fetched! Enable your location providers and relaunch the application", Toast.LENGTH_SHORT).show(); // show alert
-            mActivity.finish();
-        } else if (!isGPSEnabled && !isNetworkEnabled) {
-            buildAlertMessageTurnOnLocationProviders("Your location providers seems to be disabled, please enable it", "OK", "Cancel");
-        } else if (!isGPSEnabled && mForceNetworkProviders == LOCATION_PROVIDER_GPS_ONLY_RESTICTION) {
-            buildAlertMessageTurnOnLocationProviders("Your GPS seems to be disabled, please enable it", "OK", "Cancel");
-        } else if (!isNetworkEnabled && mForceNetworkProviders == LOCATION_PROVIDER_NETWORK_ONLY_RESTICTION) {
-            buildAlertMessageTurnOnLocationProviders("Your Network location provider seems to be disabled, please enable it", "OK", "Cancel");
+            // getting network status
+            if (!isGPSEnabled && !isNetworkEnabled && mForceNetworkProviders == LOCATION_PROVIDER_ALL_RESTICTION) {
+                Toast.makeText(mContext, "Location can't be fetched! Enable your location providers and relaunch the application", Toast.LENGTH_SHORT).show(); // show alert
+                mActivity.finish();
+            } else if (!isGPSEnabled && !isNetworkEnabled) {
+                buildAlertMessageTurnOnLocationProviders("Your location providers seems to be disabled, please enable it", "OK", "Cancel");
+            } else if (!isGPSEnabled && mForceNetworkProviders == LOCATION_PROVIDER_GPS_ONLY_RESTICTION) {
+                buildAlertMessageTurnOnLocationProviders("Your GPS seems to be disabled, please enable it", "OK", "Cancel");
+            } else if (!isNetworkEnabled && mForceNetworkProviders == LOCATION_PROVIDER_NETWORK_ONLY_RESTICTION) {
+                buildAlertMessageTurnOnLocationProviders("Your Network location provider seems to be disabled, please enable it", "OK", "Cancel");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
     }
 
     private void buildAlertMessageTurnOnLocationProviders(String message, String positiveButtonText, String negativeButtonText) {
@@ -492,13 +520,13 @@ public class SmartLocationManager implements
 
     public boolean isGooglePlayServicesAvailable() {
         int status = GooglePlayServicesUtil.isGooglePlayServicesAvailable(mContext);
-        if(status == ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED){
-            Dialog dialog = GooglePlayServicesUtil.getErrorDialog(status, mActivity,0);
+        if (status != ConnectionResult.SUCCESS) {
+            Dialog dialog = GooglePlayServicesUtil.getErrorDialog(status, mActivity, 0);
             dialog.show();
-        }else if (status == ConnectionResult.SUCCESS) {
+        } else {
             return true;
         }
-            return false;
+        return false;
     }
 
     /**

@@ -22,7 +22,7 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".LocationFetcherService"/>
+        <service android:name=".service.LocationFetcherService"/>
     </application>
 
 
