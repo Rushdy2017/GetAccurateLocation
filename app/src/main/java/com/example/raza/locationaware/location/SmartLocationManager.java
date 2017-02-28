@@ -210,23 +210,6 @@ public class SmartLocationManager implements
 
     @Override
     public void onConnected(Bundle connectionHint) {
-<<<<<<< HEAD
-        try {
-            if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                askLocationPermission();
-                return;
-            }
-            Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-            startLocationUpdates();
-            if (location == null) {
-                LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-                getLocationUsingAndroidAPI();
-            } else {
-                setNewLocation(getBetterLocation(location, mLocationFetched), mLocationFetched);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-=======
         Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
         startLocationUpdates();
         if (location == null) {
@@ -234,7 +217,6 @@ public class SmartLocationManager implements
             getLocationUsingAndroidAPIOneTimeGps();
         } else {
             setNewLocation(getBetterLocation(location, mLocationFetched), mLocationFetched);
->>>>>>> dev_saad
         }
     }
 
@@ -411,16 +393,6 @@ public class SmartLocationManager implements
 
     public void abortLocationFetching() {
         try {
-<<<<<<< HEAD
-            if (mGoogleApiClient != null)
-                mGoogleApiClient.disconnect();
-
-            // Remove the listener you previously added
-            if (locationManager != null && locationListener != null) {
-                if (Build.VERSION.SDK_INT >= 23 &&
-                        ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                        ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-=======
             if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
                 mGoogleApiClient.disconnect();
             }
@@ -429,7 +401,6 @@ public class SmartLocationManager implements
                 if (Build.VERSION.SDK_INT >= 23 &&
                         ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                         ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
->>>>>>> dev_saad
                     return;
                 }
                 try {
