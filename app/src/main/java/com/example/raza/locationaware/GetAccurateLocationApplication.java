@@ -9,7 +9,6 @@ import android.location.Location;
  */
 
 public class GetAccurateLocationApplication extends Application {
-
     public static Location mCurrentLocation;
     public static String locationProvider;
     public static Location oldLocation;

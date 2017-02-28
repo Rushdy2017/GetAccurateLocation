@@ -2,6 +2,7 @@ package com.example.raza.locationaware.location;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -65,12 +66,20 @@ public class SmartLocationManager implements
     boolean isNetworkEnabled;
 
     private int mProviderType;
+
     public static final int NETWORK_PROVIDER = 1;
     public static final int ALL_PROVIDERS = 0;
     public static final int GPS_PROVIDER = 2;
 
-//    private final double STANDARD_LOCATION_ACCURACY = 100.0;
-//    private final double STANDARD_LOCATION_SEED_LIMIT = 6.95;
+    public static final int ONLY_GOOGLE_API = 0;
+    public static final int ONLY_ANDROID_API = 1;
+    public static final int ANY_API = 2;
+
+    public int mServiceProvider;
+
+    public static final int USE_ONE_TIME_GPS = 0;
+    public static final int USE_UPDATE_TIME_GPS = 1;
+    public int mGpsOption;
 
     public static final int LOCATION_PROVIDER_ALL_RESTICTION = 1;
     public static final int LOCATION_PROVIDER_RESTRICTION_NONE = 0;
@@ -80,7 +89,7 @@ public class SmartLocationManager implements
 
     private boolean isPermissionAllowed = false;
 
-    public SmartLocationManager(Context context, Activity activity, LocationManagerInterface locationInterface, int providerType, int locationPiority, long locationFetchInterval, long fastestLocationFetchInterval, int forceNetworkProviders) {
+    public SmartLocationManager(Context context, Activity activity, int gpsOption, LocationManagerInterface locationInterface, int providerType, int locationPiority, long locationFetchInterval, long fastestLocationFetchInterval, int forceNetworkProviders, int serviceProvider) {
         mContext = context;
         mActivity = activity;
         mProviderType = providerType;
@@ -91,27 +100,97 @@ public class SmartLocationManager implements
         mFastestLocationFetchInterval = fastestLocationFetchInterval;
 
         mLocationManagerInterface = locationInterface;
+        mServiceProvider = serviceProvider;
+        mGpsOption = gpsOption;
 
-        initSmartLocationManager();
+        initSmartLocationManager(mServiceProvider, mGpsOption);
+    }
+
+    public SmartLocationManager(Context context, int gpsOption, LocationManagerInterface locationInterface, int providerType, int locationPiority, long locationFetchInterval, long fastestLocationFetchInterval, int forceNetworkProviders, int serviceProvider) {
+        mContext = context;
+        mProviderType = providerType;
+
+        mLocationPiority = locationPiority;
+        mForceNetworkProviders = forceNetworkProviders;
+        mLocationFetchInterval = locationFetchInterval;
+        mFastestLocationFetchInterval = fastestLocationFetchInterval;
+
+        mLocationManagerInterface = locationInterface;
+        mServiceProvider = serviceProvider;
+        mGpsOption = gpsOption;
+
+        initSmartLocationManager(mServiceProvider, mGpsOption);
     }
 
 
-    public void initSmartLocationManager() {
+    public void initSmartLocationManager(int serviceProvider, int gpsOption) {
 
         // 1) ask for permission for Android 6 above to avoid crash
         // 2) check if gps is available
         // 3) get location using awesome strategy
 
-//        askLocationPermission();                            // for android version 6 above
         checkNetworkProviderEnable();
 
-        if (isGooglePlayServicesAvailable())                // if googleplay services available
-            initLocationObjts();                            // init obj for google play service and start fetching location
-        else
-            getLocationUsingAndroidAPI();                   // otherwise get location using Android API
+        if (serviceProvider == ONLY_GOOGLE_API) {
+            if (gpsOption == USE_ONE_TIME_GPS) {
+                if (isGooglePlayServicesAvailable()) {
+                    // if googleplay services available
+                    Toast.makeText(mContext, "google play is used", Toast.LENGTH_SHORT).show();
+                    createGoogleApiwithOneTimeGps();
+                }// createGoogleApi for google play service and start fetching location
+            } else {
+                if (isGooglePlayServicesAvailable()) {
+                    // if googleplay services available
+                    Toast.makeText(mContext, "google play is used", Toast.LENGTH_SHORT).show();
+                    createGoogleApiEveryTimeGps();
+                }// createGoogleApi for google play service and start fetching location
+            }
+        } else if (serviceProvider == ONLY_ANDROID_API) {
+            Toast.makeText(mContext, "Android API is used", Toast.LENGTH_SHORT).show();
+            if (gpsOption == USE_ONE_TIME_GPS) {
+                getLocationUsingAndroidAPIOneTimeGps();
+            } else {
+                getLocationUsingAndroidAPI();
+            }                      // otherwise get location using Android API
+        } else if (serviceProvider == ANY_API) {
+            if (isGooglePlayServicesAvailable()) {
+                Toast.makeText(mContext, "google play is used", Toast.LENGTH_SHORT).show();
+                if (gpsOption == USE_ONE_TIME_GPS) {
+                    createGoogleApiwithOneTimeGps();
+                } else {
+                    createGoogleApiEveryTimeGps();
+                }
+                // if googleplay services available
+            } else {
+                Toast.makeText(mContext, "Android API is used", Toast.LENGTH_SHORT).show();
+                if (gpsOption == USE_ONE_TIME_GPS) {
+                    getLocationUsingAndroidAPIOneTimeGps();
+                } else {
+                    getLocationUsingAndroidAPI();
+                }
+            }
+        }
     }
 
-    private void initLocationObjts() {
+    private void createGoogleApiwithOneTimeGps() {
+        // Create the LocationRequest object
+        mLocationRequest = LocationRequest.create()
+                .setPriority(mLocationPiority);
+                /*.setInterval(mLocationFetchInterval)                    // 10 seconds, in milliseconds
+                .setFastestInterval(mFastestLocationFetchInterval);*/     // 1 second, in milliseconds
+
+        if (mGoogleApiClient == null) {
+            mGoogleApiClient = new GoogleApiClient.Builder(mActivity)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .addApi(LocationServices.API)
+                    .build();
+        }
+
+        startLocationFetching();                                        // connect google play services to fetch location
+    }
+
+    private void createGoogleApiEveryTimeGps() {
         // Create the LocationRequest object
         mLocationRequest = LocationRequest.create()
                 .setPriority(mLocationPiority)
@@ -131,6 +210,7 @@ public class SmartLocationManager implements
 
     @Override
     public void onConnected(Bundle connectionHint) {
+<<<<<<< HEAD
         try {
             if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 askLocationPermission();
@@ -146,6 +226,15 @@ public class SmartLocationManager implements
             }
         } catch (Exception e) {
             e.printStackTrace();
+=======
+        Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+        startLocationUpdates();
+        if (location == null) {
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+            getLocationUsingAndroidAPIOneTimeGps();
+        } else {
+            setNewLocation(getBetterLocation(location, mLocationFetched), mLocationFetched);
+>>>>>>> dev_saad
         }
     }
 
@@ -168,7 +257,7 @@ public class SmartLocationManager implements
         if (connectionResult.hasResolution()) {
             try {
                 connectionResult.startResolutionForResult(mActivity, CONNECTION_FAILURE_RESOLUTION_REQUEST); // Start an Activity that tries to resolve the error
-                getLocationUsingAndroidAPI();                                                                // try to get location using Android API locationManager
+                getLocationUsingAndroidAPIOneTimeGps();                                                                // try to get location using Android API locationManager
             } catch (IntentSender.SendIntentException e) {
                 e.printStackTrace();
             }
@@ -183,7 +272,34 @@ public class SmartLocationManager implements
             mLocationFetched = location;
             mLastLocationUpdateTime = DateFormat.getTimeInstance().format(new Date());
             locationProvider = location.getProvider();
-            mLocationManagerInterface.locationFetched(location, mLastLocationFetched, mLastLocationUpdateTime, location.getProvider());
+            mLocationManagerInterface.locationFetched(mLocationFetched, mLastLocationFetched, mLastLocationUpdateTime, location.getProvider());
+        }
+    }
+
+    public static boolean flag = false;
+
+    private void getLocationUsingAndroidAPIOneTimeGps() {
+        // Acquire a reference to the system Location Manager
+        locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
+
+        if (!flag) {
+            setLocationListner();
+            captureLocation();
+        } else {
+            if (locationManager != null && locationListener != null) {
+                if (Build.VERSION.SDK_INT >= 23 &&
+                        ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                        ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    return;
+                }
+                try {
+                    locationManager.removeUpdates(locationListener);
+                    locationManager = null;
+                } catch (Exception ex) {
+                    Log.e(TAG, ex.getMessage());
+
+                }
+            }
         }
     }
 
@@ -225,6 +341,8 @@ public class SmartLocationManager implements
                 } else {
                     setNewLocation(getBetterLocation(location, mLocationFetched), mLocationFetched);
                 }
+                locationManager.removeUpdates(locationListener);
+                locationManager = null;
             }
 
             public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -289,11 +407,11 @@ public class SmartLocationManager implements
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     public void abortLocationFetching() {
         try {
+<<<<<<< HEAD
             if (mGoogleApiClient != null)
                 mGoogleApiClient.disconnect();
 
@@ -302,6 +420,16 @@ public class SmartLocationManager implements
                 if (Build.VERSION.SDK_INT >= 23 &&
                         ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                         ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+=======
+            if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
+                mGoogleApiClient.disconnect();
+            }
+            // Remove the listener you previously added
+            if (locationManager != null && locationListener != null) {
+                if (Build.VERSION.SDK_INT >= 23 &&
+                        ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                        ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+>>>>>>> dev_saad
                     return;
                 }
                 try {
@@ -318,18 +446,19 @@ public class SmartLocationManager implements
     }
 
     public void resetLocation() {
-        mLocationFetched = null;
-        mLastLocationFetched = null;
-        networkLocation = null;
-        gpsLocation = null;
+        try {
+            mLocationFetched = null;
+            mLastLocationFetched = null;
+            networkLocation = null;
+            gpsLocation = null;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     //  Android M Permission check
     public boolean askLocationPermission() {
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-
-
             if (ContextCompat.checkSelfPermission(mActivity, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
                     || ContextCompat.checkSelfPermission(mActivity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                     ) {
@@ -357,30 +486,32 @@ public class SmartLocationManager implements
                     ActivityCompat.requestPermissions(mActivity, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION
                             , Manifest.permission.ACCESS_FINE_LOCATION
                     }, PERMISSION_REQUEST_CODE);
-
             }
         }
         return isPermissionAllowed;
     }
 
     public void checkNetworkProviderEnable() {
-        locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
+        try {
+            locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
 
-        isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+            isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+            isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
 
-        // getting network status
-        if (!isGPSEnabled && !isNetworkEnabled && mForceNetworkProviders == LOCATION_PROVIDER_ALL_RESTICTION) {
-            Toast.makeText(mContext, "Location can't be fetched! Enable your location providers and relaunch the application", Toast.LENGTH_SHORT).show(); // show alert
-            mActivity.finish();
-        } else if (!isGPSEnabled && !isNetworkEnabled) {
-            buildAlertMessageTurnOnLocationProviders("Your location providers seems to be disabled, please enable it", "OK", "Cancel");
-        } else if (!isGPSEnabled && mForceNetworkProviders == LOCATION_PROVIDER_GPS_ONLY_RESTICTION) {
-            buildAlertMessageTurnOnLocationProviders("Your GPS seems to be disabled, please enable it", "OK", "Cancel");
-        } else if (!isNetworkEnabled && mForceNetworkProviders == LOCATION_PROVIDER_NETWORK_ONLY_RESTICTION) {
-            buildAlertMessageTurnOnLocationProviders("Your Network location provider seems to be disabled, please enable it", "OK", "Cancel");
+            // getting network status
+            if (!isGPSEnabled && !isNetworkEnabled && mForceNetworkProviders == LOCATION_PROVIDER_ALL_RESTICTION) {
+                Toast.makeText(mContext, "Location can't be fetched! Enable your location providers and relaunch the application", Toast.LENGTH_SHORT).show(); // show alert
+                mActivity.finish();
+            } else if (!isGPSEnabled && !isNetworkEnabled) {
+                buildAlertMessageTurnOnLocationProviders("Your location providers seems to be disabled, please enable it", "OK", "Cancel");
+            } else if (!isGPSEnabled && mForceNetworkProviders == LOCATION_PROVIDER_GPS_ONLY_RESTICTION) {
+                buildAlertMessageTurnOnLocationProviders("Your GPS seems to be disabled, please enable it", "OK", "Cancel");
+            } else if (!isNetworkEnabled && mForceNetworkProviders == LOCATION_PROVIDER_NETWORK_ONLY_RESTICTION) {
+                buildAlertMessageTurnOnLocationProviders("Your Network location provider seems to be disabled, please enable it", "OK", "Cancel");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
     }
 
     private void buildAlertMessageTurnOnLocationProviders(String message, String positiveButtonText, String negativeButtonText) {
@@ -428,12 +559,13 @@ public class SmartLocationManager implements
 
     public boolean isGooglePlayServicesAvailable() {
         int status = GooglePlayServicesUtil.isGooglePlayServicesAvailable(mContext);
-
-        if (status == ConnectionResult.SUCCESS) {
-            return true;
+        if (status != ConnectionResult.SUCCESS) {
+            Dialog dialog = GooglePlayServicesUtil.getErrorDialog(status, mActivity, 0);
+            dialog.show();
         } else {
-            return false;
+            return true;
         }
+        return false;
     }
 
     /**

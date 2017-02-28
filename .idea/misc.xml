@@ -34,6 +34,7 @@
           <State>
             <id />
           </State>
+<<<<<<< HEAD
           <State>
             <id>Abstraction issuesJava</id>
           </State>
@@ -164,6 +165,14 @@
             <id>Visibility issuesJava</id>
           </State>
         </expanded-state>
+=======
+        </expanded-state>
+        <selected-state>
+          <State>
+            <id>Android</id>
+          </State>
+        </selected-state>
+>>>>>>> dev_saad
       </profile-state>
     </entry>
   </component>
